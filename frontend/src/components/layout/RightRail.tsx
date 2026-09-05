@@ -20,8 +20,8 @@ const features = [
 
 export function RightRail() {
   return (
-    <aside className="w-[290px] shrink-0">
-      <div className="sticky top-6 overflow-hidden rounded-2xl bg-surface p-6">
+    <aside className="w-full lg:w-[290px] lg:shrink-0">
+      <div className="overflow-hidden rounded-2xl bg-surface p-6 lg:sticky lg:top-6">
         <img
           src={railBlob}
           alt=""

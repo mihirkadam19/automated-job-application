@@ -49,7 +49,7 @@ export function JobListPage() {
         counts={{ liked: likedIds.size, applied: appliedIds.size }}
       />
 
-      <div className="flex gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 lg:flex-row lg:p-6">
         <div className="min-w-0 flex-1 space-y-4">
           <SortRow value={sortKey} onChange={setSortKey} />
 

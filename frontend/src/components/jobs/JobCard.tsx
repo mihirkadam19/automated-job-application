@@ -37,14 +37,14 @@ export function JobCard({
       role="link"
       tabIndex={0}
       aria-label={`View details for ${job.title} at ${job.company}`}
-      className="cursor-pointer rounded-card bg-surface px-[26px] py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      className="cursor-pointer overflow-hidden rounded-card bg-surface px-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:px-[26px]"
     >
-      <div className="flex items-start gap-5">
+      <div className="flex items-start gap-3 lg:gap-5">
         <MatchRing score={job.matchScore} />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-4">
-            <h3 className="text-2xl font-semibold leading-snug text-black">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="min-w-0 text-lg font-semibold leading-snug text-black lg:text-2xl">
               {job.title}
             </h3>
             <div className="flex shrink-0 items-center gap-3 pt-1.5">
