@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { ToastContainer } from '../ui/ToastContainer'
 import { UpgradeModal } from '../ui/UpgradeModal'
 import { Sidebar } from './Sidebar'
 
@@ -10,6 +11,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <UpgradeModal />
+      <ToastContainer />
     </div>
   )
 }

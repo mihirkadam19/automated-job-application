@@ -9,6 +9,7 @@ import { FitAnalysisPanel } from '../components/detail/FitAnalysisPanel'
 import { InterviewPromo } from '../components/detail/InterviewPromo'
 import { QualificationSection } from '../components/detail/QualificationSection'
 import { TabBar, type JobTab } from '../components/jobs/TabBar'
+import { useToast } from '../context/ToastContext'
 import { defaultAppliedIds, defaultLikedIds, jobs } from '../data/jobs'
 import { sharedJobDetail } from '../data/jobDetail'
 import { useJobInteractions } from '../hooks/useJobInteractions'
@@ -21,6 +22,7 @@ export function JobDetailPage() {
     defaultLikedIds,
     defaultAppliedIds,
   )
+  const { showToast } = useToast()
 
   if (!job) {
     return (
@@ -37,6 +39,17 @@ export function JobDetailPage() {
     navigate(`/?tab=${tab}`)
   }
 
+  const handleToggleLike = () => {
+    const wasLiked = likedIds.has(job.id)
+    toggleLiked(job.id)
+    showToast(wasLiked ? 'Removed from Liked' : `Saved "${job.title}" to Liked`)
+  }
+
+  const handleApply = () => {
+    markApplied(job.id)
+    showToast(`Application submitted for "${job.title}"`)
+  }
+
   return (
     <div>
       <TabBar
@@ -50,9 +63,9 @@ export function JobDetailPage() {
           <DetailHeader
             applicants={job.applicants}
             applied={appliedIds.has(job.id)}
-            onApply={() => markApplied(job.id)}
+            onApply={handleApply}
             liked={likedIds.has(job.id)}
-            onToggleLike={() => toggleLiked(job.id)}
+            onToggleLike={handleToggleLike}
           />
 
           <div className="rounded-card bg-surface p-4 lg:p-8">

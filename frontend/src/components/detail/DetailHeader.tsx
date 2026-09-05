@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import arrowLeft from '../../assets/icons/arrow-left.svg'
 import externalLink from '../../assets/icons/external-link.svg'
+import heartFilledIcon from '../../assets/icons/heart-filled.svg'
 import heartIcon from '../../assets/icons/heart.svg'
 import searchWindowWhite from '../../assets/icons/search-window-white.svg'
 import { Button } from '../ui/Button'
@@ -43,9 +44,13 @@ export function DetailHeader({
           onClick={onToggleLike}
           aria-label={liked ? 'Remove from liked jobs' : 'Save to liked jobs'}
           aria-pressed={liked}
-          className={`rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${liked ? 'bg-primary/10' : ''}`}
+          className={`rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${liked ? 'bg-red-50' : ''}`}
         >
-          <img src={heartIcon} alt="" className="size-[19px]" />
+          <img
+            src={liked ? heartFilledIcon : heartIcon}
+            alt=""
+            className="size-[19px]"
+          />
         </button>
         <Button
           variant="dark"

@@ -1,11 +1,18 @@
 import searchWindowWhite from '../../assets/icons/search-window-white.svg'
 import { useSubscription } from '../../context/SubscriptionContext'
+import { useToast } from '../../context/ToastContext'
 import { Button } from './Button'
 
 export function UpgradeModal() {
   const { isModalOpen, closeUpgradeModal, upgrade } = useSubscription()
+  const { showToast } = useToast()
 
   if (!isModalOpen) return null
+
+  const handleUpgrade = () => {
+    upgrade()
+    showToast("You're subscribed! Fit analysis unlocked.")
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -36,7 +43,7 @@ export function UpgradeModal() {
           <Button
             variant="dark"
             leftIcon={searchWindowWhite}
-            onClick={upgrade}
+            onClick={handleUpgrade}
             className="w-full"
           >
             Upgrade Now
