@@ -3,9 +3,15 @@ import { matchRingColor } from '../../lib/matchColor'
 export function MatchRing({
   score,
   size = 108,
+  color,
+  trackColor = '#f3f3f4',
+  showLabel = true,
 }: {
   score: number
   size?: number
+  color?: string
+  trackColor?: string
+  showLabel?: boolean
 }) {
   const thickness = size * 0.15
   const radius = size / 2 - thickness / 2
@@ -23,7 +29,7 @@ export function MatchRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#f3f3f4"
+          stroke={trackColor}
           strokeWidth={thickness}
         />
         <circle
@@ -31,7 +37,7 @@ export function MatchRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={matchRingColor(score)}
+          stroke={color ?? matchRingColor(score)}
           strokeWidth={thickness}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circumference - dash}`}
@@ -44,12 +50,14 @@ export function MatchRing({
         >
           {score}%
         </span>
-        <span
-          className="mt-1 leading-none opacity-90"
-          style={{ fontSize: size * 0.155 }}
-        >
-          Match
-        </span>
+        {showLabel && (
+          <span
+            className="mt-1 leading-none opacity-90"
+            style={{ fontSize: size * 0.155 }}
+          >
+            Match
+          </span>
+        )}
       </div>
     </div>
   )

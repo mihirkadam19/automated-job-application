@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { RightRail } from '../components/layout/RightRail'
 import { JobCard } from '../components/jobs/JobCard'
 import { SortRow } from '../components/jobs/SortRow'
@@ -6,8 +7,14 @@ import { TabBar, type JobTab } from '../components/jobs/TabBar'
 import { defaultAppliedIds, defaultLikedIds, jobs } from '../data/jobs'
 import { useJobInteractions } from '../hooks/useJobInteractions'
 
+const validTabs: JobTab[] = ['matched', 'liked', 'applied']
+
 export function JobListPage() {
-  const [tab, setTab] = useState<JobTab>('matched')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab')
+  const [tab, setTab] = useState<JobTab>(
+    validTabs.includes(initialTab as JobTab) ? (initialTab as JobTab) : 'matched',
+  )
   const { likedIds, toggleLiked, appliedIds, markApplied } =
     useJobInteractions(defaultLikedIds, defaultAppliedIds)
 
