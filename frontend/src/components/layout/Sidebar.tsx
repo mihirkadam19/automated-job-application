@@ -46,14 +46,23 @@ function NavRow({
 
   if (!to) {
     return (
-      <button type="button" className="w-full cursor-default text-left">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-disabled="true"
+        className="w-full cursor-default text-left"
+      >
         {content(false)}
       </button>
     )
   }
 
   return (
-    <NavLink to={to} end className="block">
+    <NavLink
+      to={to}
+      end
+      className="block rounded-pill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    >
       {({ isActive }) => content(isActive)}
     </NavLink>
   )
@@ -94,6 +103,8 @@ export function Sidebar() {
           </p>
           <button
             type="button"
+            tabIndex={-1}
+            aria-disabled="true"
             className="mt-4 w-full rounded-pill bg-white py-2.5 text-sm font-medium text-ink"
           >
             Subscription

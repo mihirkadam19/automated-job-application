@@ -21,9 +21,10 @@ export function DetailHeader({
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="flex size-[35px] items-center justify-center rounded-pill bg-surface"
+          aria-label="Back to job list"
+          className="flex size-[35px] items-center justify-center rounded-pill bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          <img src={arrowLeft} alt="Back" className="size-5" />
+          <img src={arrowLeft} alt="" className="size-5" />
         </button>
         <span className="rounded-pill bg-primary px-4 py-2 text-sm font-medium text-white">
           {applicants} applicants
@@ -31,8 +32,8 @@ export function DetailHeader({
       </div>
 
       <div className="flex items-center gap-4">
-        <img src={externalLink} alt="Open external link" className="size-[19px] opacity-70" />
-        <img src={externalLink} alt="Open external link" className="size-[19px] opacity-70" />
+        <img src={externalLink} alt="" aria-hidden="true" className="size-[19px] opacity-70" />
+        <img src={externalLink} alt="" aria-hidden="true" className="size-[19px] opacity-70" />
         <Button
           variant="dark"
           leftIcon={searchWindowWhite}

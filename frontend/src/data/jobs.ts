@@ -10,7 +10,9 @@ export type Job = {
   experienceTag: string
   seniority: string
   salaryRange: string
+  salaryMin: number
   postedAt: string
+  postedHoursAgo: number
   applicants: number
 }
 
@@ -27,7 +29,9 @@ export const jobs: Job[] = [
     experienceTag: '0 of 3 skills match',
     seniority: 'Mid Level',
     salaryRange: '$65/yr - $70/yr',
+    salaryMin: 65,
     postedAt: '1 hours ago',
+    postedHoursAgo: 1,
     applicants: 25,
   },
   {
@@ -42,7 +46,9 @@ export const jobs: Job[] = [
     experienceTag: '5+ years exp',
     seniority: 'Mid Level',
     salaryRange: '$161K/yr - $239K/yr',
+    salaryMin: 161000,
     postedAt: '2 hours ago',
+    postedHoursAgo: 2,
     applicants: 25,
   },
   {
@@ -57,7 +63,9 @@ export const jobs: Job[] = [
     experienceTag: '5+ years exp',
     seniority: 'Mid Level',
     salaryRange: '$125K/yr - $140K/yr',
+    salaryMin: 125000,
     postedAt: '2 hours ago',
+    postedHoursAgo: 2,
     applicants: 25,
   },
 ]

@@ -23,11 +23,21 @@ export function JobCard({
   onApply: () => void
 }) {
   const navigate = useNavigate()
+  const goToDetail = () => navigate(`/jobs/${job.id}`)
 
   return (
     <article
-      onClick={() => navigate(`/jobs/${job.id}`)}
-      className="cursor-pointer rounded-card bg-surface px-[26px] py-4"
+      onClick={goToDetail}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          goToDetail()
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`View details for ${job.title} at ${job.company}`}
+      className="cursor-pointer rounded-card bg-surface px-[26px] py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
     >
       <div className="flex items-start gap-5">
         <MatchRing score={job.matchScore} />
@@ -38,22 +48,23 @@ export function JobCard({
               {job.title}
             </h3>
             <div className="flex shrink-0 items-center gap-3 pt-1.5">
-              <button type="button" onClick={(e) => e.stopPropagation()}>
-                <img src={expandIcon} alt="Expand" className="size-[19px]" />
-              </button>
+              <img
+                src={expandIcon}
+                alt=""
+                aria-hidden="true"
+                className="size-[19px]"
+              />
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleLike()
                 }}
-                className={`rounded-full p-1 ${liked ? 'bg-primary/10' : ''}`}
+                aria-label={liked ? 'Remove from liked jobs' : 'Save to liked jobs'}
+                aria-pressed={liked}
+                className={`rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${liked ? 'bg-primary/10' : ''}`}
               >
-                <img
-                  src={heartIcon}
-                  alt={liked ? 'Unlike' : 'Like'}
-                  className="size-[19px]"
-                />
+                <img src={heartIcon} alt="" className="size-[19px]" />
               </button>
             </div>
           </div>

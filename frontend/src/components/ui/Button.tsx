@@ -24,7 +24,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`flex items-center justify-center gap-2.5 rounded-pill px-4.5 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${variants[variant]} ${className}`}
+      className={`flex items-center justify-center gap-2.5 rounded-pill px-4.5 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${variants[variant]} ${className}`}
       {...rest}
     >
       {leftIcon && <img src={leftIcon} alt="" className="size-4" />}

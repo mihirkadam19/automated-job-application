@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { RightRail } from '../components/layout/RightRail'
 import { JobCard } from '../components/jobs/JobCard'
-import { SortRow } from '../components/jobs/SortRow'
+import { JobCardSkeleton } from '../components/jobs/JobCardSkeleton'
+import { SortRow, type SortKey } from '../components/jobs/SortRow'
 import { TabBar, type JobTab } from '../components/jobs/TabBar'
 import { defaultAppliedIds, defaultLikedIds, jobs } from '../data/jobs'
 import { useJobInteractions } from '../hooks/useJobInteractions'
@@ -15,14 +16,30 @@ export function JobListPage() {
   const [tab, setTab] = useState<JobTab>(
     validTabs.includes(initialTab as JobTab) ? (initialTab as JobTab) : 'matched',
   )
+  const [sortKey, setSortKey] = useState<SortKey>('top-matched')
+  const [loading, setLoading] = useState(true)
   const { likedIds, toggleLiked, appliedIds, markApplied } =
     useJobInteractions(defaultLikedIds, defaultAppliedIds)
 
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 600)
+    return () => clearTimeout(timer)
+  }, [])
+
   const visibleJobs = useMemo(() => {
-    if (tab === 'liked') return jobs.filter((j) => likedIds.has(j.id))
-    if (tab === 'applied') return jobs.filter((j) => appliedIds.has(j.id))
-    return jobs
-  }, [tab, likedIds, appliedIds])
+    const filtered =
+      tab === 'liked'
+        ? jobs.filter((j) => likedIds.has(j.id))
+        : tab === 'applied'
+          ? jobs.filter((j) => appliedIds.has(j.id))
+          : jobs
+
+    return [...filtered].sort((a, b) => {
+      if (sortKey === 'most-recent') return a.postedHoursAgo - b.postedHoursAgo
+      if (sortKey === 'salary') return b.salaryMin - a.salaryMin
+      return b.matchScore - a.matchScore
+    })
+  }, [tab, likedIds, appliedIds, sortKey])
 
   return (
     <div>
@@ -34,9 +51,15 @@ export function JobListPage() {
 
       <div className="flex gap-6 p-6">
         <div className="min-w-0 flex-1 space-y-4">
-          <SortRow />
+          <SortRow value={sortKey} onChange={setSortKey} />
 
-          {visibleJobs.length === 0 ? (
+          {loading ? (
+            <>
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+              <JobCardSkeleton />
+            </>
+          ) : visibleJobs.length === 0 ? (
             <div className="flex h-40 items-center justify-center rounded-card bg-surface text-sm text-muted-2">
               No jobs in "{tab}" yet.
             </div>
