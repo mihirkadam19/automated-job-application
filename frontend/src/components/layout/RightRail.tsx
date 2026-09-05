@@ -2,6 +2,7 @@ import aiGenerate from '../../assets/icons/ai-generate.svg'
 import generateB from '../../assets/icons/generate-b.svg'
 import searchIcon from '../../assets/icons/search-window-white.svg'
 import railBlob from '../../assets/images/rail-blob.png'
+import { Button } from '../ui/Button'
 import { MobileFloatingPanel } from '../ui/MobileFloatingPanel'
 
 const heading = 'Ace Your Interviews with AI-Powered Mock Sessions!'
@@ -46,13 +47,9 @@ function PanelBody() {
         ))}
       </ul>
 
-      <button
-        type="button"
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-pill bg-ink py-3 text-sm font-medium text-white"
-      >
-        <img src={searchIcon} alt="" className="size-4" />
+      <Button variant="dark" leftIcon={searchIcon} className="mt-6 w-full">
         Mock Interview
-      </button>
+      </Button>
     </>
   )
 }
