@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import arrowLeft from '../../assets/icons/arrow-left.svg'
 import externalLink from '../../assets/icons/external-link.svg'
+import heartIcon from '../../assets/icons/heart.svg'
 import searchWindowWhite from '../../assets/icons/search-window-white.svg'
 import { Button } from '../ui/Button'
 
@@ -8,15 +9,19 @@ export function DetailHeader({
   applicants,
   applied,
   onApply,
+  liked,
+  onToggleLike,
 }: {
   applicants: number
   applied: boolean
   onApply: () => void
+  liked: boolean
+  onToggleLike: () => void
 }) {
   const navigate = useNavigate()
 
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -33,7 +38,15 @@ export function DetailHeader({
 
       <div className="flex items-center gap-4">
         <img src={externalLink} alt="" aria-hidden="true" className="size-[19px] opacity-70" />
-        <img src={externalLink} alt="" aria-hidden="true" className="size-[19px] opacity-70" />
+        <button
+          type="button"
+          onClick={onToggleLike}
+          aria-label={liked ? 'Remove from liked jobs' : 'Save to liked jobs'}
+          aria-pressed={liked}
+          className={`rounded-full p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${liked ? 'bg-primary/10' : ''}`}
+        >
+          <img src={heartIcon} alt="" className="size-[19px]" />
+        </button>
         <Button
           variant="dark"
           leftIcon={searchWindowWhite}

@@ -8,6 +8,7 @@ import paperclip from '../../assets/icons/paperclip.svg'
 import settings from '../../assets/icons/settings.svg'
 import subscription from '../../assets/icons/subscription.svg'
 import logo from '../../assets/images/logo.png'
+import { useSubscription } from '../../context/SubscriptionContext'
 
 const primaryNav = [
   { label: 'Jobs', icon: briefcase, to: '/' },
@@ -99,6 +100,8 @@ function NavRow({
 }
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { openUpgradeModal } = useSubscription()
+
   return (
     <>
       <nav className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-3 py-4">
@@ -129,9 +132,11 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
           </p>
           <button
             type="button"
-            tabIndex={-1}
-            aria-disabled="true"
-            className="mt-4 w-full rounded-pill bg-white py-2.5 text-sm font-medium text-ink"
+            onClick={() => {
+              onNavigate?.()
+              openUpgradeModal()
+            }}
+            className="mt-4 w-full rounded-pill bg-white py-2.5 text-sm font-medium text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             Subscription
           </button>

@@ -6,8 +6,8 @@ import { MatchRing } from '../jobs/MatchRing'
 
 export function DetailHero({ job }: { job: Job }) {
   return (
-    <div className="flex items-start gap-6">
-      <span className="size-[90px] shrink-0 rounded-card bg-bg" />
+    <div className="flex items-start gap-3 lg:gap-6">
+      <span className="size-16 shrink-0 rounded-card bg-bg lg:size-[90px]" />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
@@ -17,7 +17,7 @@ export function DetailHero({ job }: { job: Job }) {
           </span>
         </div>
 
-        <h1 className="mt-3 text-2xl font-semibold text-black">
+        <h1 className="mt-3 min-w-0 text-lg font-semibold text-black lg:text-2xl">
           {job.title}
         </h1>
         <p className="mt-2 text-base font-medium text-muted">{job.company}</p>
@@ -37,7 +37,9 @@ export function DetailHero({ job }: { job: Job }) {
         </div>
       </div>
 
-      <MatchRing score={job.matchScore} size={93} />
+      <span className="shrink-0">
+        <MatchRing score={job.matchScore} size={93} />
+      </span>
     </div>
   )
 }

@@ -17,7 +17,7 @@ export function JobDetailPage() {
   const { jobId } = useParams()
   const navigate = useNavigate()
   const job = jobs.find((j) => j.id === jobId)
-  const { appliedIds, markApplied, likedIds } = useJobInteractions(
+  const { appliedIds, markApplied, likedIds, toggleLiked } = useJobInteractions(
     defaultLikedIds,
     defaultAppliedIds,
   )
@@ -45,15 +45,17 @@ export function JobDetailPage() {
         counts={{ liked: likedIds.size, applied: appliedIds.size }}
       />
 
-      <div className="flex gap-6 p-6">
+      <div className="flex flex-col gap-6 p-4 lg:flex-row lg:p-6">
         <div className="min-w-0 flex-1 space-y-4">
           <DetailHeader
             applicants={job.applicants}
             applied={appliedIds.has(job.id)}
             onApply={() => markApplied(job.id)}
+            liked={likedIds.has(job.id)}
+            onToggleLike={() => toggleLiked(job.id)}
           />
 
-          <div className="rounded-card bg-surface p-8">
+          <div className="rounded-card bg-surface p-4 lg:p-8">
             <div className="flex flex-col gap-6">
               <DetailHero job={job} />
               <DetailTagRow
