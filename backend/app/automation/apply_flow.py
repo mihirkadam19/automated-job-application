@@ -2,15 +2,18 @@ from playwright.async_api import Page
 
 from app.automation.browser_manager import launch_context
 from app.automation.challenge_detection import ChallengeDetected, detect_challenge
+from app.automation.screening_answers import _SET_CHECKED_JS, answer_questions
 
 MAX_STEPS = 10
 STEP_SETTLE_MS = 2500
 
-# Priority order of "advance to the next step" button labels. Only the first
-# one confirmed via a real trial: on the structured-data-intro step, no
-# "Continue" button is visible, only "Review details" - trying labels in
-# order and taking whichever is actually visible handles both.
-GENERIC_CONTINUE_LABELS = ("Continue", "Review details", "Next")
+# Priority order of "advance to the next step" button labels - confirmed
+# via real trials that this varies by step: "Continue" on most steps, no
+# "Continue" on structured-data-intro (only "Review details"), and the
+# demographic/consent step uses "Review your application" instead of
+# either. Trying labels in order and taking whichever is actually visible
+# handles all of these without hardcoding per-step button names.
+GENERIC_CONTINUE_LABELS = ("Continue", "Review details", "Review your application", "Next")
 
 # Best-effort field matching for any step we haven't seen for real (e.g. a
 # contact-info or custom screening-question step) - unverified, since every
@@ -39,13 +42,10 @@ async def _handle_resume_selection(page: Page, resume_path: str | None) -> None:
         if await radios.count() > 0:
             # The native radio is visually hidden behind a styled card UI and
             # sits outside the viewport, so even check(force=True) fails -
-            # confirmed via a real trial. Set state directly via the DOM and
-            # fire the events React's controlled input listens for.
-            await radios.first.evaluate(
-                "el => { el.checked = true; "
-                "el.dispatchEvent(new Event('input', { bubbles: true })); "
-                "el.dispatchEvent(new Event('change', { bubbles: true })); }"
-            )
+            # confirmed via a real trial. _SET_CHECKED_JS also bypasses
+            # React's instance-patched setter so its internal tracker
+            # actually registers the change (see screening_answers.py).
+            await radios.first.evaluate(_SET_CHECKED_JS)
     await page.wait_for_timeout(1000)
     await _click_visible(page, "Continue")
 
@@ -112,10 +112,29 @@ async def apply_to_job(
 
             if "review-module" in url:
                 await page.wait_for_timeout(STEP_SETTLE_MS)
-                submitted = await _click_visible(page, "Submit your application")
-                if submitted:
-                    return {"status": "submitted"}
-                return {"status": "failed", "reason": "could not find submit button on review step"}
+
+                # Re-check right before the highest-stakes action: a
+                # challenge can appear in the gap between this iteration's
+                # top-of-loop check and now - confirmed via a real trial
+                # where the submit click timed out on a disabled button
+                # instead of a challenge ever being raised.
+                challenge = await detect_challenge(page)
+                if challenge is not None:
+                    raise ChallengeDetected(challenge)
+
+                submit_button = page.get_by_role(
+                    "button", name="Submit your application", exact=True
+                ).locator("visible=true")
+                if await submit_button.count() == 0:
+                    return {"status": "failed", "reason": "could not find submit button on review step"}
+                if await submit_button.first.get_attribute("disabled") is not None:
+                    return {
+                        "status": "manual_action_required",
+                        "reason": "submit button stayed disabled with no challenge detected",
+                    }
+
+                await submit_button.first.click()
+                return {"status": "submitted"}
 
             if "resume-selection" in url:
                 await _handle_resume_selection(page, resume_path)
@@ -125,13 +144,30 @@ async def apply_to_job(
             if "questions-module" in url:
                 # Confirmed via a real trial: employer-custom screening
                 # questions (arbitrary text, radio groups + free-text
-                # inputs), required before Continue does anything. No
-                # generic way to answer these reliably from a profile -
-                # fail fast rather than loop uselessly to MAX_STEPS.
-                return {
-                    "status": "manual_action_required",
-                    "reason": f"custom screening questions need a human at {url}",
-                }
+                # inputs), required before Continue does anything.
+                # answer_questions() has its own blocklist gate for
+                # consequential/legal-adjacent questions (work authorization,
+                # sponsorship, salary, etc.) - it returns False and touches
+                # nothing if any question matches, or if it can't confidently
+                # match an LLM answer back to a real option.
+                answered = await answer_questions(page, profile)
+                if not answered:
+                    return {
+                        "status": "manual_action_required",
+                        "reason": f"screening questions need a human at {url}",
+                    }
+                advanced = False
+                for label in GENERIC_CONTINUE_LABELS:
+                    if await _click_visible(page, label):
+                        advanced = True
+                        break
+                if not advanced:
+                    return {
+                        "status": "failed",
+                        "reason": f"answered questions but found no way to advance at {url}",
+                    }
+                await page.wait_for_timeout(STEP_SETTLE_MS)
+                continue
 
             advanced = await _handle_generic_step(page, profile)
             if not advanced:

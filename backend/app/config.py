@@ -16,6 +16,7 @@ class Settings:
         self.login_poll_interval_seconds: float = float(
             os.getenv("LOGIN_POLL_INTERVAL_SECONDS", "2")
         )
+        self.anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
 
 
 @lru_cache
