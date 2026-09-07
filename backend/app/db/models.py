@@ -59,7 +59,6 @@ class IndeedSession(Base):
     __tablename__ = "sessions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
-    account_email: Mapped[str] = mapped_column(String(255), index=True)
     encrypted_storage_state: Mapped[bytes | None] = mapped_column(LargeBinary)
     status: Mapped[SessionStatus] = mapped_column(
         SAEnum(SessionStatus), default=SessionStatus.NEEDS_VERIFICATION, nullable=False

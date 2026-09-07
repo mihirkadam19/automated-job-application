@@ -42,7 +42,7 @@ async def capture_login_session() -> dict | None:
     manually (password, SMS/email code, CAPTCHA - whatever Indeed asks for,
     handled entirely by the human). Returns the resulting storage_state once
     login is detected, or None if nobody finished within the timeout."""
-    async with launch_context(headless=False) as context:
+    async with launch_context(headless=False, browser_type="firefox") as context:
         page = await context.new_page()
         await page.goto(LOGIN_URL)
         logged_in = await _wait_for_manual_login(page)

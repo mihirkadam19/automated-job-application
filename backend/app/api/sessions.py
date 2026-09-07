@@ -9,14 +9,13 @@ from app.services import session_service
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-class SessionCreateRequest(BaseModel):
-    account_email: str
+class SessionImportRequest(BaseModel):
+    storage_state: dict | list
 
 
 def _serialize(session: IndeedSession) -> dict:
     return {
         "id": session.id,
-        "account_email": session.account_email,
         "status": session.status.value,
         "last_validated_at": session.last_validated_at,
         "created_at": session.created_at,
@@ -25,8 +24,17 @@ def _serialize(session: IndeedSession) -> dict:
 
 
 @router.post("", status_code=201)
-async def create_session(payload: SessionCreateRequest, db: Session = Depends(get_db)):
-    session = await session_service.start_capture(db, payload.account_email)
+async def create_session(db: Session = Depends(get_db)):
+    session = await session_service.start_capture(db)
+    return _serialize(session)
+
+
+@router.post("/import", status_code=201)
+def import_session(payload: SessionImportRequest, db: Session = Depends(get_db)):
+    try:
+        session = session_service.import_session(db, payload.storage_state)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     return _serialize(session)
 
 
