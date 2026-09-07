@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.automation import browser_manager
 from app.db.base import get_db
 from app.db.models import IndeedSession
 from app.services import session_service
@@ -21,7 +22,7 @@ class SessionImportRequest(BaseModel):
 
 
 class SessionRefreshRequest(BaseModel):
-    browser_mode: BrowserMode
+    browser_mode: BrowserMode = browser_manager.DEFAULT_BROWSER_MODE
 
 
 def _serialize(session: IndeedSession) -> dict:

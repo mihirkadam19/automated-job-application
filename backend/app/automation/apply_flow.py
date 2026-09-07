@@ -384,12 +384,14 @@ async def apply_to_job(
     clears, unless pause_on_manual is set (see below).
 
     browser_mode picks how the browser gets launched (see
-    browser_manager.launch) - defaults to "os_chrome" since that's the only
-    one confirmed to get past Cloudflare's automation detection this
-    session, with zero exceptions, while Playwright's own chromium.launch()
-    ("playwright") got flagged every single time. "playwright" is kept
-    available for a different account/environment/day where that isn't an
-    issue, since it's simpler and faster (no subprocess+CDP dance).
+    browser_manager.launch) - defaults to "playwright" since it's simpler
+    and faster (no subprocess+CDP dance). Live testing this project found
+    Playwright's own chromium.launch() ("playwright") got flagged by
+    Cloudflare with zero exceptions, while "os_chrome" (plain
+    subprocess-launched Chrome, connected to afterward via connect_over_cdp)
+    was the only mode confirmed to get past it - if a default request comes
+    back with a captcha checkpoint, retry with browser_mode="os_chrome", or
+    with headless=False so a human can clear the challenge directly.
 
     headless and pause_on_manual are deliberately separate concerns,
     confirmed necessary via a real trial where conflating them made every

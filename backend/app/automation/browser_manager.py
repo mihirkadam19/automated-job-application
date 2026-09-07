@@ -32,13 +32,17 @@ def _free_port() -> int:
 
 
 # The two ways job_search.py/apply_flow.py can drive a real browser against
-# Indeed. "os_chrome" is the default everywhere because it's the only one
-# confirmed to get past Cloudflare's automation detection this session -
-# "playwright" is kept available (rather than deleted) for a different
-# account/environment/day where Cloudflare isn't currently escalated, where
+# Indeed. "playwright" (Playwright's own chromium.launch()) is the default -
 # it's simpler and faster since it skips the subprocess+CDP dance entirely.
+# NOTE: earlier live testing this project confirmed Playwright's own
+# launch() gets flagged by Cloudflare with zero exceptions, while "os_chrome"
+# (launch_subprocess_cdp_context below) was the only mode confirmed to get
+# past it. If a request using the default "playwright" mode comes back with
+# a captcha checkpoint, either pass browser_mode="os_chrome" instead, or
+# retry the same request headless=False so a human can clear the challenge
+# in the visible browser window that opens.
 BROWSER_MODES = ("playwright", "os_chrome")
-DEFAULT_BROWSER_MODE = "os_chrome"
+DEFAULT_BROWSER_MODE = "playwright"
 
 
 def launch(browser_mode: str, headless: bool, storage_state: dict | None = None):

@@ -89,12 +89,13 @@ async def search_jobs(
     """Search Indeed using an already-authenticated session. Read-only -
     nothing is persisted or submitted here. browser_mode picks how the
     browser gets launched (see browser_manager.launch) - defaults to
-    "os_chrome" since that's the only one confirmed to get past
-    Cloudflare's automation detection this session; "playwright" is
-    available for a different account/environment/day where that isn't an
-    issue. When headless=False, waits for a human to clear anything
-    Cloudflare shows; still raises ChallengeDetected if it never clears (or
-    immediately when headless=True, since no one's there to clear it)."""
+    "playwright" since it's simpler and faster; "os_chrome" is the mode
+    confirmed via live testing to reliably get past Cloudflare's automation
+    detection, so switch to it (or retry with headless=False) if a default
+    request comes back with a captcha checkpoint. When headless=False,
+    waits for a human to clear anything Cloudflare shows; still raises
+    ChallengeDetected if it never clears (or immediately when
+    headless=True, since no one's there to clear it)."""
     params = urllib.parse.urlencode({"q": query, "l": location})
     url = f"{SEARCH_URL}?{params}"
 

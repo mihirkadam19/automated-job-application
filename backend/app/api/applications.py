@@ -4,18 +4,21 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.automation import browser_manager
 from app.db.base import get_db
 from app.db.models import Application
 from app.services import application_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
-# Sent on every request that drives a browser - "os_chrome" (plain
-# subprocess-launched Chrome, connected to afterward via connect_over_cdp)
-# is the only one confirmed to get past Cloudflare's automation detection
-# this session; "playwright" (Playwright's own chromium.launch()) is kept
-# available for a different account/environment/day where that isn't an
-# issue. No default - the caller picks explicitly every time.
+# Sent on every request that drives a browser. "playwright" (Playwright's
+# own chromium.launch()) is the default, since it's simpler and faster than
+# "os_chrome" (plain subprocess-launched Chrome, connected to afterward via
+# connect_over_cdp). Earlier live testing confirmed "os_chrome" is the only
+# mode that reliably gets past Cloudflare's automation detection, so if a
+# default request comes back with a captcha checkpoint, retry with
+# browser_mode="os_chrome", or with the same mode but headless=False so a
+# human can clear the challenge in the visible browser that opens.
 BrowserMode = Literal["playwright", "os_chrome"]
 
 
@@ -28,13 +31,13 @@ class ApplicationCreateRequest(BaseModel):
     profile: dict
     resume_path: str | None = None
     headless: bool = True
-    browser_mode: BrowserMode
+    browser_mode: BrowserMode = browser_manager.DEFAULT_BROWSER_MODE
 
 
 class ApplicationResumeRequest(BaseModel):
     profile: dict
     resume_path: str | None = None
-    browser_mode: BrowserMode
+    browser_mode: BrowserMode = browser_manager.DEFAULT_BROWSER_MODE
 
 
 def _serialize(application: Application) -> dict:
