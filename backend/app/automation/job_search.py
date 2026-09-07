@@ -4,7 +4,7 @@ import urllib.parse
 from playwright.async_api import BrowserContext
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from app.automation.browser_manager import launch_subprocess_cdp_context
+from app.automation import browser_manager
 from app.automation.challenge_detection import ChallengeDetected, detect_challenge
 
 SEARCH_URL = "https://www.indeed.com/jobs"
@@ -79,20 +79,24 @@ async def _run_search(
 
 
 async def search_jobs(
-    storage_state: dict, query: str, location: str = "", limit: int = 10, headless: bool = True
+    storage_state: dict,
+    query: str,
+    location: str = "",
+    limit: int = 10,
+    headless: bool = True,
+    browser_mode: str = browser_manager.DEFAULT_BROWSER_MODE,
 ) -> list[dict]:
     """Search Indeed using an already-authenticated session. Read-only -
-    nothing is persisted or submitted here. Launches via
-    launch_subprocess_cdp_context rather than Playwright's own
-    chromium.launch() - confirmed via extensive real trials that launch()
-    gets flagged by Cloudflare's automation detection every single time,
-    with zero exceptions all session, while a plain subprocess-launched
-    Chrome connected to afterward via connect_over_cdp has passed
-    repeatedly. When headless=False, waits for a human to clear anything
+    nothing is persisted or submitted here. browser_mode picks how the
+    browser gets launched (see browser_manager.launch) - defaults to
+    "os_chrome" since that's the only one confirmed to get past
+    Cloudflare's automation detection this session; "playwright" is
+    available for a different account/environment/day where that isn't an
+    issue. When headless=False, waits for a human to clear anything
     Cloudflare shows; still raises ChallengeDetected if it never clears (or
     immediately when headless=True, since no one's there to clear it)."""
     params = urllib.parse.urlencode({"q": query, "l": location})
     url = f"{SEARCH_URL}?{params}"
 
-    async with launch_subprocess_cdp_context(headless=headless, storage_state=storage_state) as context:
+    async with browser_manager.launch(browser_mode, headless=headless, storage_state=storage_state) as context:
         return await _run_search(context, url, limit, wait_for_human=not headless)

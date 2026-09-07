@@ -31,6 +31,28 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+# The two ways job_search.py/apply_flow.py can drive a real browser against
+# Indeed. "os_chrome" is the default everywhere because it's the only one
+# confirmed to get past Cloudflare's automation detection this session -
+# "playwright" is kept available (rather than deleted) for a different
+# account/environment/day where Cloudflare isn't currently escalated, where
+# it's simpler and faster since it skips the subprocess+CDP dance entirely.
+BROWSER_MODES = ("playwright", "os_chrome")
+DEFAULT_BROWSER_MODE = "os_chrome"
+
+
+def launch(browser_mode: str, headless: bool, storage_state: dict | None = None):
+    """Dispatches to the right launcher for browser_mode. Returns an async
+    context manager (like launch_context/launch_subprocess_cdp_context
+    themselves) - callers still do `async with browser_manager.launch(...)
+    as context:`."""
+    if browser_mode == "playwright":
+        return launch_context(headless=headless, storage_state=storage_state)
+    if browser_mode == "os_chrome":
+        return launch_subprocess_cdp_context(headless=headless, storage_state=storage_state)
+    raise ValueError(f"invalid browser_mode: {browser_mode!r} (expected one of {BROWSER_MODES})")
+
+
 # Playwright's default headless Chromium sends a User-Agent containing
 # "HeadlessChrome", which Indeed's bot protection flags outright on
 # search/listing pages (confirmed: identical cookies + headless=True was
@@ -110,9 +132,23 @@ async def launch_subprocess_cdp_context(headless: bool, storage_state: dict | No
     port = _free_port()
     profile_dir = tempfile.mkdtemp(prefix="indeed_cdp_profile_")
 
-    args = [chrome_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}"]
+    # Confirmed via a real trial: without these, headless=True here hits
+    # Indeed's own basic headless-Chromium bot-block outright ("Blocked -
+    # Indeed.com", a completely different page than Cloudflare's Turnstile
+    # interstitial, and one detect_challenge() didn't even recognize) -
+    # this launcher never carried the two flags launch_context has used
+    # since the very first bot-block fix of this whole project:
+    # --disable-blink-features=AutomationControlled, and a normal desktop
+    # Chrome User-Agent to replace the default "HeadlessChrome" one.
+    args = [
+        chrome_path,
+        f"--remote-debugging-port={port}",
+        f"--user-data-dir={profile_dir}",
+        "--disable-blink-features=AutomationControlled",
+    ]
     if headless:
         args.append("--headless=new")
+        args.append(f"--user-agent={DESKTOP_CHROME_UA}")
     args.append("about:blank")
 
     proc = subprocess.Popen(args)

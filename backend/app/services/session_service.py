@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.db.models import IndeedSession, SessionStatus
-from app.automation.browser_manager import launch_context
+from app.automation import browser_manager
 from app.automation.login_capture import ACCOUNT_URL, looks_logged_in, open_login_window
 from app.automation.storage_state_crypto import decrypt_storage_state, encrypt_storage_state
 
@@ -129,7 +129,9 @@ def list_sessions(db: Session, status: str | None = None) -> list[IndeedSession]
     return query.order_by(IndeedSession.created_at.desc()).all()
 
 
-async def refresh(db: Session, session_id: str) -> IndeedSession:
+async def refresh(
+    db: Session, session_id: str, browser_mode: str = browser_manager.DEFAULT_BROWSER_MODE
+) -> IndeedSession:
     session = db.get(IndeedSession, session_id)
     if session is None:
         raise LookupError(f"session {session_id} not found")
@@ -138,7 +140,7 @@ async def refresh(db: Session, session_id: str) -> IndeedSession:
 
     storage_state = decrypt_storage_state(session.encrypted_storage_state)
 
-    async with launch_context(headless=True, storage_state=storage_state) as context:
+    async with browser_manager.launch(browser_mode, headless=True, storage_state=storage_state) as context:
         page = await context.new_page()
         await page.goto(ACCOUNT_URL)
         still_logged_in = looks_logged_in(page)

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -7,6 +9,14 @@ from app.db.models import Application
 from app.services import application_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
+
+# Sent on every request that drives a browser - "os_chrome" (plain
+# subprocess-launched Chrome, connected to afterward via connect_over_cdp)
+# is the only one confirmed to get past Cloudflare's automation detection
+# this session; "playwright" (Playwright's own chromium.launch()) is kept
+# available for a different account/environment/day where that isn't an
+# issue. No default - the caller picks explicitly every time.
+BrowserMode = Literal["playwright", "os_chrome"]
 
 
 class ApplicationCreateRequest(BaseModel):
@@ -18,11 +28,13 @@ class ApplicationCreateRequest(BaseModel):
     profile: dict
     resume_path: str | None = None
     headless: bool = True
+    browser_mode: BrowserMode
 
 
 class ApplicationResumeRequest(BaseModel):
     profile: dict
     resume_path: str | None = None
+    browser_mode: BrowserMode
 
 
 def _serialize(application: Application) -> dict:
@@ -59,6 +71,7 @@ async def create_application(payload: ApplicationCreateRequest, db: Session = De
             profile=payload.profile,
             resume_path=payload.resume_path,
             headless=payload.headless,
+            browser_mode=payload.browser_mode,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -91,7 +104,11 @@ async def resume_application(
 ):
     try:
         application = await application_service.resume_manually(
-            db, application_id, profile=payload.profile, resume_path=payload.resume_path
+            db,
+            application_id,
+            profile=payload.profile,
+            resume_path=payload.resume_path,
+            browser_mode=payload.browser_mode,
         )
     except LookupError:
         raise HTTPException(status_code=404, detail="application not found")

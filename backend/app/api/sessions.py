@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -8,10 +10,18 @@ from app.services import session_service
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
+# See app/api/applications.py's BrowserMode for what these mean - shared
+# here since refresh() also drives a real browser.
+BrowserMode = Literal["playwright", "os_chrome"]
+
 
 class SessionImportRequest(BaseModel):
     storage_state: dict | list
     session_id: str | None = None
+
+
+class SessionRefreshRequest(BaseModel):
+    browser_mode: BrowserMode
 
 
 def _serialize(session: IndeedSession) -> dict:
@@ -60,9 +70,11 @@ def get_session(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{session_id}/refresh")
-async def refresh_session(session_id: str, db: Session = Depends(get_db)):
+async def refresh_session(
+    session_id: str, payload: SessionRefreshRequest, db: Session = Depends(get_db)
+):
     try:
-        session = await session_service.refresh(db, session_id)
+        session = await session_service.refresh(db, session_id, browser_mode=payload.browser_mode)
     except LookupError:
         raise HTTPException(status_code=404, detail="session not found")
     except ValueError as e:

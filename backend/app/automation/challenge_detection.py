@@ -108,6 +108,18 @@ async def detect_challenge(page: Page) -> CheckpointType | None:
     if "just a moment" in (await page.title()).lower():
         return CheckpointType.CAPTCHA
 
+    # Confirmed via a real trial: a genuinely different page from
+    # Cloudflare's Turnstile interstitial - Indeed's own basic
+    # headless-Chromium bot-block (title exactly "Blocked - Indeed.com"),
+    # seen when a launcher was missing --disable-blink-features=
+    # AutomationControlled and a desktop Chrome User-Agent override for
+    # headless mode (now fixed in browser_manager.py). Flagged as
+    # UNKNOWN_CHALLENGE rather than CAPTCHA since there's nothing for a
+    # human to click through here - it's an outright block, not a solvable
+    # verification step - kept as a defensive fallback in case it recurs.
+    if "blocked - indeed.com" in (await page.title()).lower():
+        return CheckpointType.UNKNOWN_CHALLENGE
+
     otp_present = False
     for selector in OTP_INPUT_SELECTORS:
         if await page.locator(selector).count() > 0:

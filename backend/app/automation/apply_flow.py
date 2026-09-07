@@ -3,7 +3,7 @@ import asyncio
 from playwright.async_api import BrowserContext, Page
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from app.automation.browser_manager import launch_subprocess_cdp_context
+from app.automation import browser_manager
 from app.automation.challenge_detection import ChallengeDetected, CheckpointType, detect_challenge
 from app.automation.screening_answers import _SET_CHECKED_JS, answer_questions
 
@@ -171,29 +171,41 @@ async def _drive_apply_flow(
     await page.goto(job_url, timeout=30000)
     await page.wait_for_timeout(2000)
 
+    # Check for a challenge FIRST, before drawing any conclusion about the
+    # page's actual content - confirmed via a real trial that checking for
+    # the Apply button first and only reactively checking for a challenge
+    # once that came up empty meant a challenge that hadn't rendered yet
+    # within our flat settle delay got misdiagnosed as "no native Apply
+    # flow" instead of being given any chance to clear.
+    challenge = await detect_challenge(page)
+    if challenge is not None:
+        challenge = await _await_challenge_clear(page, challenge, headless)
+    if challenge is not None:
+        if pause_on_manual:
+            return await _resolve_pause(
+                page, f"challenge detected: {challenge.value}", challenge.value
+            )
+        raise ChallengeDetected(challenge)
+
     apply_button = page.get_by_role("button", name="Apply with Indeed").locator("visible=true")
     if await apply_button.count() == 0 and not headless:
-        # See APPLY_BUTTON_WAIT_TIMEOUT_SECONDS above - give the page (and
-        # any challenge on it) time to actually settle before concluding
-        # there's no apply flow here at all.
+        # See APPLY_BUTTON_WAIT_TIMEOUT_SECONDS above - give the page time
+        # to actually settle before concluding there's no apply flow here.
         elapsed = 0
         while await apply_button.count() == 0 and elapsed < APPLY_BUTTON_WAIT_TIMEOUT_SECONDS:
             await page.wait_for_timeout(APPLY_BUTTON_POLL_INTERVAL_SECONDS * 1000)
             elapsed += APPLY_BUTTON_POLL_INTERVAL_SECONDS
             apply_button = page.get_by_role("button", name="Apply with Indeed").locator("visible=true")
+            # A challenge can also appear mid-wait, not just at the start.
+            challenge = await detect_challenge(page)
+            if challenge is not None:
+                if pause_on_manual:
+                    return await _resolve_pause(
+                        page, f"challenge detected: {challenge.value}", challenge.value
+                    )
+                raise ChallengeDetected(challenge)
 
     if await apply_button.count() == 0:
-        # Distinguish "genuinely no native apply flow" from "a challenge
-        # was sitting here the whole time" - confirmed via a real trial
-        # that these got conflated into a misleading "no native Apply flow"
-        # message when it was actually Cloudflare blocking the page.
-        challenge = await detect_challenge(page)
-        if challenge is not None:
-            if pause_on_manual:
-                return await _resolve_pause(
-                    page, f"challenge detected: {challenge.value}", challenge.value
-                )
-            raise ChallengeDetected(challenge)
         if pause_on_manual:
             return await _resolve_pause(
                 page, "no native Indeed Apply flow for this job", "unknown_challenge"
@@ -362,6 +374,7 @@ async def apply_to_job(
     resume_path: str | None = None,
     headless: bool = True,
     pause_on_manual: bool = False,
+    browser_mode: str = browser_manager.DEFAULT_BROWSER_MODE,
 ) -> dict:
     """Drive Indeed's native apply wizard using an already-authenticated
     session. Only supports jobs with a native "Apply with Indeed" flow -
@@ -370,13 +383,13 @@ async def apply_to_job(
     ChallengeDetected if Indeed shows a CAPTCHA/verification that never
     clears, unless pause_on_manual is set (see below).
 
-    Launches via launch_subprocess_cdp_context (browser_manager.py) rather
-    than Playwright's own chromium.launch() - confirmed via extensive real
-    trials that launch() gets flagged by Cloudflare's automation detection
-    every single time, with zero exceptions all session, while a plain
-    subprocess-launched Chrome connected to afterward via connect_over_cdp
-    has passed repeatedly (job_search.py's search_jobs uses the same
-    launcher).
+    browser_mode picks how the browser gets launched (see
+    browser_manager.launch) - defaults to "os_chrome" since that's the only
+    one confirmed to get past Cloudflare's automation detection this
+    session, with zero exceptions, while Playwright's own chromium.launch()
+    ("playwright") got flagged every single time. "playwright" is kept
+    available for a different account/environment/day where that isn't an
+    issue, since it's simpler and faster (no subprocess+CDP dance).
 
     headless and pause_on_manual are deliberately separate concerns,
     confirmed necessary via a real trial where conflating them made every
@@ -403,5 +416,5 @@ async def apply_to_job(
     So headed was never the actual fix; it was a missed CAPTCHA. headless
     defaults to True here to match job_search.py, with the caller free to
     force headed=False to give a human the chance to help clear something."""
-    async with launch_subprocess_cdp_context(headless=headless, storage_state=storage_state) as context:
+    async with browser_manager.launch(browser_mode, headless=headless, storage_state=storage_state) as context:
         return await _drive_apply_flow(context, job_url, profile, resume_path, headless, pause_on_manual)

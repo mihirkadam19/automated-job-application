@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.automation import browser_manager
 from app.automation.apply_flow import apply_to_job
 from app.automation.challenge_detection import ChallengeDetected
 from app.automation.storage_state_crypto import decrypt_storage_state
@@ -67,6 +68,7 @@ async def run_application(
     profile: dict,
     resume_path: str | None = None,
     headless: bool = True,
+    browser_mode: str = browser_manager.DEFAULT_BROWSER_MODE,
 ) -> Application:
     """Drives apply_to_job for an already-created Application row and
     persists the outcome. profile is only ever passed through in-memory to
@@ -87,7 +89,7 @@ async def run_application(
 
     try:
         result = await apply_to_job(
-            storage_state, application.job_url, profile, resume_path, headless
+            storage_state, application.job_url, profile, resume_path, headless, browser_mode=browser_mode
         )
         application.status = _RESULT_STATUS_MAP.get(result["status"], ApplicationStatus.FAILED)
         application.last_error = result.get("reason")
@@ -150,7 +152,11 @@ def list_applications(
 
 
 async def resume_manually(
-    db: Session, application_id: str, profile: dict, resume_path: str | None = None
+    db: Session,
+    application_id: str,
+    profile: dict,
+    resume_path: str | None = None,
+    browser_mode: str = browser_manager.DEFAULT_BROWSER_MODE,
 ) -> Application:
     """Re-drives the SAME automated flow as run_application (resume
     selection, LLM-answered screening questions, everything) in a real
@@ -189,6 +195,7 @@ async def resume_manually(
         resume_path,
         headless=False,
         pause_on_manual=True,
+        browser_mode=browser_mode,
     )
 
     application.status = _RESULT_STATUS_MAP.get(result["status"], ApplicationStatus.FAILED)
