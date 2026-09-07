@@ -11,6 +11,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 class SessionImportRequest(BaseModel):
     storage_state: dict | list
+    session_id: str | None = None
 
 
 def _serialize(session: IndeedSession) -> dict:
@@ -24,15 +25,17 @@ def _serialize(session: IndeedSession) -> dict:
 
 
 @router.post("", status_code=201)
-async def create_session(db: Session = Depends(get_db)):
-    session = await session_service.start_capture(db)
+def create_session(db: Session = Depends(get_db)):
+    session = session_service.start_capture(db)
     return _serialize(session)
 
 
 @router.post("/import", status_code=201)
 def import_session(payload: SessionImportRequest, db: Session = Depends(get_db)):
     try:
-        session = session_service.import_session(db, payload.storage_state)
+        session = session_service.import_session(db, payload.storage_state, payload.session_id)
+    except LookupError:
+        raise HTTPException(status_code=404, detail="session not found")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return _serialize(session)

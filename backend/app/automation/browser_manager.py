@@ -1,6 +1,35 @@
+import asyncio
+import shutil
+import socket
+import subprocess
+import tempfile
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from playwright.async_api import Browser, BrowserContext, async_playwright
+
+# Common install locations for a real, non-Playwright-managed Chrome on
+# Windows - checked in order, falling back to a PATH lookup. Shared by
+# login_capture.py (plain OS launch) and launch_subprocess_cdp_context
+# below (plain OS launch + CDP attach).
+_CHROME_PATHS = (
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+)
+
+
+def find_chrome_executable() -> str | None:
+    for path in _CHROME_PATHS:
+        if Path(path).exists():
+            return path
+    return shutil.which("chrome") or shutil.which("google-chrome")
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
 
 # Playwright's default headless Chromium sends a User-Agent containing
 # "HeadlessChrome", which Indeed's bot protection flags outright on
@@ -53,3 +82,51 @@ async def launch_context(headless: bool, storage_state: dict | None = None, brow
                 await context.close()
         finally:
             await browser.close()
+
+
+@asynccontextmanager
+async def launch_subprocess_cdp_context(headless: bool, storage_state: dict | None = None):
+    """Fallback launch mechanism for when launch_context's normal
+    playwright.chromium.launch() gets flagged by Cloudflare's automation
+    detection. Confirmed via a real trial: launching real Chrome as a plain
+    OS subprocess with only --remote-debugging-port set, then having
+    Playwright CONNECT to it afterward via connect_over_cdp, passed a live
+    Cloudflare Turnstile check (and successfully scraped real search
+    results) on the exact same session that launch_context's normal launch()
+    got an instant CAPTCHA on moments earlier - despite both ending up with
+    CDP attached. Playwright's launch() sets a number of its own additional
+    flags/preferences beyond just the debugging port (automation-controlled
+    switches, policy overrides, etc.) - one of those, not CDP attachment
+    itself, appears to be the actual trigger. Only tried headed so far (a
+    real human was present to clear an interactive challenge if one
+    appeared); headless is passed through via --headless=new but is
+    unverified. Uses a fresh temporary profile directory per call so it
+    never collides with the user's real Chrome profile or other concurrent
+    calls."""
+    chrome_path = find_chrome_executable()
+    if chrome_path is None:
+        raise RuntimeError("could not locate a real Chrome executable for the CDP fallback")
+
+    port = _free_port()
+    profile_dir = tempfile.mkdtemp(prefix="indeed_cdp_profile_")
+
+    args = [chrome_path, f"--remote-debugging-port={port}", f"--user-data-dir={profile_dir}"]
+    if headless:
+        args.append("--headless=new")
+    args.append("about:blank")
+
+    proc = subprocess.Popen(args)
+    try:
+        await asyncio.sleep(2)  # give Chrome a moment to open its debugging port
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.connect_over_cdp(f"http://localhost:{port}")
+            context = browser.contexts[0] if browser.contexts else await browser.new_context()
+            if storage_state and storage_state.get("cookies"):
+                await context.add_cookies(storage_state["cookies"])
+            try:
+                yield context
+            finally:
+                await context.close()
+    finally:
+        proc.terminate()
+        shutil.rmtree(profile_dir, ignore_errors=True)

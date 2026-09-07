@@ -1,10 +1,10 @@
-import asyncio
 import re
+import subprocess
+import webbrowser
 
 from playwright.async_api import Page
 
-from app.config import get_settings
-from app.automation.browser_manager import launch_context
+from app.automation.browser_manager import find_chrome_executable
 
 LOGIN_URL = "https://secure.indeed.com/auth"
 
@@ -21,31 +21,31 @@ ACCOUNT_URL = "https://secure.indeed.com/settings/account"
 # here are unverified guesses at other pre-login steps.
 NOT_LOGGED_IN_PATTERN = re.compile(r"secure\.indeed\.com/(auth|account/verify|challenge|checkpoint)")
 
-
 def looks_logged_in(page: Page) -> bool:
     return not NOT_LOGGED_IN_PATTERN.search(page.url)
 
 
-async def _wait_for_manual_login(page: Page) -> bool:
-    settings = get_settings()
-    elapsed = 0.0
-    while elapsed < settings.login_wait_timeout_seconds:
-        if looks_logged_in(page):
-            return True
-        await asyncio.sleep(settings.login_poll_interval_seconds)
-        elapsed += settings.login_poll_interval_seconds
-    return looks_logged_in(page)
+def open_login_window() -> None:
+    """Launches a genuinely plain, un-automated Chrome window at Indeed's
+    login page - no Playwright, no CDP, no remote-debugging port, nothing
+    attached to it at all. Confirmed via extensive real trials that every
+    Playwright-driven variant (Chromium, Firefox, fresh profile, persistent
+    profile, different IPs including a mobile hotspot) hit the same
+    Cloudflare Turnstile wall regardless - the common factor was always the
+    automation attachment itself, not the browser engine or network. A
+    plain subprocess-launched Chrome has no automation protocol attached at
+    all, so there is nothing for Cloudflare to flag - from its perspective
+    this is indistinguishable from the human opening Chrome normally,
+    because it is.
 
-
-async def capture_login_session() -> dict | None:
-    """Open a fresh, isolated browser window for a human to log into Indeed
-    manually (password, SMS/email code, CAPTCHA - whatever Indeed asks for,
-    handled entirely by the human). Returns the resulting storage_state once
-    login is detected, or None if nobody finished within the timeout."""
-    async with launch_context(headless=False, browser_type="firefox") as context:
-        page = await context.new_page()
-        await page.goto(LOGIN_URL)
-        logged_in = await _wait_for_manual_login(page)
-        if not logged_in:
-            return None
-        return await context.storage_state()
+    Because nothing is attached to this window, we have no way to detect
+    when login finishes or to read the resulting cookies programmatically -
+    that's the trade-off for not looking automated. The human logs in
+    completely normally here, then exports their cookies (e.g. via the
+    Cookie-Editor extension) and hands them to session_service.import_session
+    (POST /sessions/import) to actually populate the session row."""
+    chrome_path = find_chrome_executable()
+    if chrome_path:
+        subprocess.Popen([chrome_path, LOGIN_URL])
+    else:
+        webbrowser.open(LOGIN_URL)

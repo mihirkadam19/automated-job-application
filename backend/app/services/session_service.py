@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import IndeedSession, SessionStatus
 from app.automation.browser_manager import launch_context
-from app.automation.login_capture import ACCOUNT_URL, capture_login_session, looks_logged_in
+from app.automation.login_capture import ACCOUNT_URL, looks_logged_in, open_login_window
 from app.automation.storage_state_crypto import decrypt_storage_state, encrypt_storage_state
 
 # Maps a cookie-export extension's sameSite values (Cookie-Editor and most
@@ -60,48 +60,52 @@ def _normalize_storage_state(raw: dict | list) -> dict:
     return {"cookies": cookies, "origins": []}
 
 
-async def start_capture(db: Session) -> IndeedSession:
+def start_capture(db: Session) -> IndeedSession:
+    """Creates a NEEDS_VERIFICATION session row and opens a genuinely plain,
+    un-automated Chrome window at Indeed's login page (see
+    login_capture.open_login_window for why - every Playwright-driven
+    variant tried, regardless of browser engine/IP/profile, hit the same
+    Cloudflare wall). Returns immediately: nothing is attached to that
+    window, so there's no way to detect login completion or read cookies
+    from it here. The human logs in normally, exports their cookies, and
+    calls import_session with this row's id to actually activate it."""
     session = IndeedSession()
     db.add(session)
     db.commit()
     db.refresh(session)
 
-    storage_state = await capture_login_session()
-
-    if storage_state is not None:
-        session.encrypted_storage_state = encrypt_storage_state(storage_state)
-        session.status = SessionStatus.ACTIVE
-        session.last_validated_at = datetime.now(timezone.utc)
-
-    db.commit()
-    db.refresh(session)
+    open_login_window()
     return session
 
 
-def import_session(db: Session, storage_state: dict | list) -> IndeedSession:
-    """Fallback to start_capture, for when Cloudflare's bot-management has
-    escalated against the automated browser itself (confirmed via a real
-    trial: a persistent, real on-disk Chrome profile still got blocked
-    identically to a fresh one, isolating the cause to Playwright's CDP
-    attachment rather than IP/profile freshness - not something a launch
-    flag can fix). The human logs into Indeed in their own regular browser
-    (already proven to pass), exports the resulting cookies, and we store
-    them directly - zero automation ever touches the login page in this
-    path, which is arguably even more "manual login only" than the
-    browser-capture flow. No live validation against Indeed is attempted
-    here on purpose: doing so would use the same automated browser that's
-    the whole reason this path exists, and could misreport a good cookie
-    export as bad. Downstream operations (job_search, apply_flow) will
-    naturally surface a bad import the same way they'd surface any other
-    stale session."""
+def import_session(
+    db: Session, storage_state: dict | list, session_id: str | None = None
+) -> IndeedSession:
+    """Populates a session's encrypted_storage_state from cookies the human
+    exported out of their own real, already-logged-in browser (e.g. via the
+    Cookie-Editor extension) - zero automation ever touches the login page
+    in this path. Pass session_id to activate a row created by
+    start_capture's plain-browser-window flow; omit it to create a
+    standalone row from scratch. No live validation against Indeed is
+    attempted here on purpose: doing so would use the same automated
+    browser that's the whole reason this path exists, and could misreport a
+    good cookie export as bad. Downstream operations (job_search,
+    apply_flow) will naturally surface a bad import the same way they'd
+    surface any other stale session."""
     normalized = _normalize_storage_state(storage_state)
 
-    session = IndeedSession(
-        encrypted_storage_state=encrypt_storage_state(normalized),
-        status=SessionStatus.ACTIVE,
-        last_validated_at=datetime.now(timezone.utc),
-    )
-    db.add(session)
+    if session_id is not None:
+        session = db.get(IndeedSession, session_id)
+        if session is None:
+            raise LookupError(f"session {session_id} not found")
+    else:
+        session = IndeedSession()
+        db.add(session)
+
+    session.encrypted_storage_state = encrypt_storage_state(normalized)
+    session.status = SessionStatus.ACTIVE
+    session.last_validated_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(session)
     return session
