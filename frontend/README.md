@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# Frontend Assignment
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This folder is the solution for the frontend assignment: a job-search UI built with React 19, TypeScript, Vite, React Router 7, and Tailwind CSS v4. All job data is mocked locally under `src/data/` — there is no backend call from this app.
 
-Currently, two official plugins are available:
+## What it does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Job list** (`/`) with three tabs — Matched, Liked, Applied — plus free-text search over title/company/location and sorting by match score, recency, or salary. Cards show a match ring, tags, and inline Like / Apply actions, with a skeleton state on first load.
+- **Job detail** (`/jobs/:jobId`) with hero, qualifications, bullet sections, benefits, and company info.
+- **Fit analysis panel** — a per-job "why is this a good fit" breakdown that is blurred and gated behind a subscription. "Upgrade to check" opens an upgrade modal; upgrading (mocked, in-memory) reveals it.
+- **Liked / applied state** is held client-side via `useJobInteractions`; toasts confirm each action.
 
-## React Compiler
+## Project structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+  App.tsx                  router + context providers
+  routes/                  JobListPage, JobDetailPage
+  components/
+    layout/                AppLayout, Sidebar, RightRail
+    jobs/                  JobCard, SearchBar, SortRow, TabBar, MatchRing, TagPill
+    detail/                DetailHero, QualificationSection, FitAnalysisPanel, ...
+    ui/                    Button, UpgradeModal, ToastContainer, MobileFloatingPanel
+  context/                 SubscriptionContext, ToastContext
+  hooks/                   useJobInteractions
+  data/                    jobs.ts, jobDetail.ts  (mock data)
+  lib/                     matchColor.ts
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## How to run
+
+```bash
+npm install
+npm run dev        # start the dev server (Vite)
+npm run build      # type-check and produce a production build
+npm run preview    # serve the production build
+npm run lint       # oxlint
+```
