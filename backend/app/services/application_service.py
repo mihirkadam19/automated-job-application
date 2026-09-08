@@ -165,17 +165,21 @@ async def resume_manually(
     apply_to_job's pause_on_manual mode makes it stop advancing and leave
     the browser open at exactly the point that needs a human (a challenge,
     an unanswerable question, a stuck submit button) rather than raising/
-    returning immediately. Only meant for applications that already stalled
-    on something we won't touch ourselves. Blocks until the human closes the
-    browser; on close, checks the last URL seen and marks the application
-    SUBMITTED if it reached Indeed's real post-apply confirmation page."""
+    returning immediately. Meant for applications that already stalled on
+    something we won't touch ourselves (manual_action_required), or that
+    gave up outright (failed, e.g. "exceeded max steps") - both put a human
+    in the same real, already-logged-in browser at the job page to finish by
+    hand rather than starting over from scratch. Blocks until the human
+    closes the browser; on close, checks the last URL seen and marks the
+    application SUBMITTED if it reached Indeed's real post-apply
+    confirmation page."""
     application = db.get(Application, application_id)
     if application is None:
         raise LookupError(f"application {application_id} not found")
-    if application.status != ApplicationStatus.MANUAL_ACTION_REQUIRED:
+    if application.status not in (ApplicationStatus.MANUAL_ACTION_REQUIRED, ApplicationStatus.FAILED):
         raise ValueError(
             f"application {application_id} is {application.status.value}, "
-            "not manual_action_required - nothing to resume"
+            "not manual_action_required or failed - nothing to resume"
         )
 
     session = db.get(IndeedSession, application.session_id)
